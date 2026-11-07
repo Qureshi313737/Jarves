@@ -1,0 +1,4 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="accessibility_description">Jarves uses this to see what is on your screen and to tap, type and scroll in other apps when you ask it to do something by voice (for example: open Chrome, download a file, send a WhatsApp message). Nothing is collected unless you give Jarves a command; screen contents of the current task are sent to the Claude API to decide the next step.</string>
+</resources>
