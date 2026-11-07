@@ -98,7 +98,8 @@ class FileTools(private val ctx: Context) {
                 break
             }
             val c = conn!!
-            val mime = c.contentType?.substringBefore(';')?.trim()?.lowercase() ?: guessMimeFromName(current.path)
+            var mime = c.contentType?.substringBefore(';')?.trim()?.lowercase() ?: guessMimeFromName(current.path)
+            if (mime in GENERIC_MIMES) mime = guessMimeFromName(fileName.ifBlank { current.path })
             if (mime == "text/html" || mime == "application/xhtml+xml") {
                 return ToolOutput.error(
                     "This URL is a web page (text/html), not a downloadable file. Use web_fetch on the page to find the direct file/image URL, " +
@@ -191,7 +192,7 @@ class FileTools(private val ctx: Context) {
         }
         name = name.replace(Regex("[\\\\/:*?\"<>|\\n\\r\\t]"), "_").trim().take(120)
         if (name.isEmpty() || name == "_") name = "download_${System.currentTimeMillis()}"
-        val ext = MimeTypeMap.getSingleton().getExtensionFromMimeType(mime)
+        val ext = if (mime in GENERIC_MIMES) null else MimeTypeMap.getSingleton().getExtensionFromMimeType(mime)
         val currentExt = name.substringAfterLast('.', "").lowercase()
         if (ext != null) {
             val ok = currentExt == ext || (ext == "jpg" && currentExt == "jpeg") || (ext == "jpeg" && currentExt == "jpg")
@@ -415,6 +416,8 @@ class FileTools(private val ctx: Context) {
     }
 
     companion object {
+        private val GENERIC_MIMES = setOf("application/octet-stream", "binary/octet-stream", "application/force-download", "application/download")
+
         const val USER_AGENT =
             "Mozilla/5.0 (Linux; Android 14; Mobile) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/130.0.0.0 Mobile Safari/537.36"
 
