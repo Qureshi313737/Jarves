@@ -5,10 +5,8 @@ import android.content.Context
 import android.content.Intent
 import android.content.pm.PackageManager
 import android.net.Uri
-import android.os.Build
 import android.provider.ContactsContract
-import android.provider.Telephony
-import android.telephony.SmsManager
+import com.jarves.assistant.Features
 import com.jarves.assistant.service.JarvesNotificationListener
 import java.text.SimpleDateFormat
 import java.util.Date
@@ -93,22 +91,21 @@ class PhoneTools(private val ctx: Context) {
         if (message.isBlank()) return ToolOutput.error("message is empty")
         val (num, err) = resolveNumber(to)
         if (num == null) return ToolOutput.error(err ?: "Unknown number")
-        if (!granted(Manifest.permission.SEND_SMS)) {
-            val i = Intent(Intent.ACTION_SENDTO, Uri.parse("smsto:" + Uri.encode(num)))
-                .putExtra("sms_body", message).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
-            return try {
-                ctx.startActivity(i)
-                ToolOutput.ok("SMS permission not granted, so the messaging app was opened with the text filled in. Use read_screen and tap Send.")
-            } catch (e: Exception) { missing("SMS") }
-        }
+        // Sent through the phone's own messaging app, so Jarves needs no SMS permission
+        // (apps with SMS permissions are often blocked from installing by Play Protect).
+        val i = Intent(Intent.ACTION_SENDTO, Uri.parse("smsto:" + Uri.encode(num)))
+            .putExtra("sms_body", message)
+            .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
         return try {
-            @Suppress("DEPRECATION")
-            val sms: SmsManager = if (Build.VERSION.SDK_INT >= 31) ctx.getSystemService(SmsManager::class.java)!! else SmsManager.getDefault()
-            val parts = sms.divideMessage(message)
-            sms.sendMultipartTextMessage(num, null, parts, null, null)
-            ToolOutput.ok("SMS sent to $num.")
+            ctx.startActivity(i)
+            Thread.sleep(2000)
+            if (Features.screenControl(ctx)) {
+                ToolOutput.ok("Messaging app opened to $num with the text filled in. Now call read_screen and tap the Send button.")
+            } else {
+                ToolOutput.ok("Messaging app opened to $num with the text filled in. Tell the user to tap Send (this Lite edition cannot tap for them).")
+            }
         } catch (e: Exception) {
-            ToolOutput.error("SMS failed: ${e.message}")
+            ToolOutput.error("No messaging app found: ${e.message}")
         }
     }
 
@@ -146,26 +143,5 @@ class PhoneTools(private val ctx: Context) {
         return ToolOutput.ok(list.take(limit.coerceIn(1, 50)).joinToString("\n") {
             "[${fmt.format(Date(it.time))}] ${it.appName}: ${it.title} — ${it.text}".take(400)
         })
-    }
-
-    fun readSms(from: String, limit: Int): ToolOutput {
-        if (!granted(Manifest.permission.READ_SMS)) return missing("reading SMS")
-        val out = StringBuilder()
-        val fmt = SimpleDateFormat("d MMM HH:mm", Locale.ENGLISH)
-        var n = 0
-        val sel = if (from.isNotBlank()) "${Telephony.Sms.ADDRESS} LIKE ?" else null
-        val args = if (from.isNotBlank()) arrayOf("%$from%") else null
-        ctx.contentResolver.query(
-            Telephony.Sms.Inbox.CONTENT_URI,
-            arrayOf(Telephony.Sms.ADDRESS, Telephony.Sms.BODY, Telephony.Sms.DATE),
-            sel, args, Telephony.Sms.DEFAULT_SORT_ORDER,
-        )?.use { c ->
-            while (c.moveToNext() && n < limit.coerceIn(1, 50)) {
-                out.append('[').append(fmt.format(Date(c.getLong(2)))).append("] ")
-                    .append(c.getString(0)).append(": ").append(c.getString(1)?.take(500)).append('\n')
-                n++
-            }
-        }
-        return ToolOutput.ok(if (n == 0) "No SMS found." else out.toString())
     }
 }

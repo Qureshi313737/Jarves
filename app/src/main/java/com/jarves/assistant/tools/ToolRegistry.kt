@@ -6,6 +6,7 @@ import android.os.Environment
 import com.anthropic.core.JsonValue
 import com.anthropic.models.messages.Tool
 import com.jarves.assistant.Core
+import com.jarves.assistant.Features
 import com.jarves.assistant.service.JarvesAccessibilityService
 import org.json.JSONObject
 import java.text.SimpleDateFormat
@@ -28,7 +29,17 @@ class ToolRegistry(private val ctx: Context) {
     private val phone = PhoneTools(ctx)
     private val device = DeviceTools(ctx)
 
-    private val defs: List<Tool> by lazy { buildDefinitions() }
+    private val screenTools = setOf("read_screen", "tap", "long_press", "type_text", "scroll", "swipe", "press_key", "take_screenshot")
+
+    /** Tools this edition can actually run (Lite has no screen control / notification reading). */
+    private val defs: List<Tool> by lazy {
+        val screen = Features.screenControl(ctx)
+        val notif = Features.notificationReading(ctx)
+        buildDefinitions().filter { t ->
+            val n = t.name()
+            (screen || n !in screenTools) && (notif || n != "read_notifications")
+        }
+    }
 
     fun definitions(): List<Tool> = defs
 
@@ -68,7 +79,6 @@ class ToolRegistry(private val ctx: Context) {
         "send_sms" -> phone.sendSms(a.optString("to"), a.optString("message"))
         "send_whatsapp" -> phone.openWhatsApp(a.optString("to"), a.optString("message"))
         "read_notifications" -> phone.readNotifications(a.optString("app"), a.optInt("limit", 15))
-        "read_sms" -> phone.readSms(a.optString("from"), a.optInt("limit", 10))
         // Device
         "device_status" -> device.status()
         "set_volume" -> device.setVolume(a.optString("stream", "media"), a.optInt("level_percent", 50))
@@ -112,10 +122,14 @@ class ToolRegistry(private val ctx: Context) {
     /** Small context line prefixed to each user command. */
     fun contextHeader(): String {
         val time = SimpleDateFormat("EEE d MMM yyyy, HH:mm", Locale.ENGLISH).format(Date())
-        val acc = JarvesAccessibilityService.instance != null
+        val screen = when {
+            !Features.screenControl(ctx) -> "not available (Jarves Lite edition: you cannot tap or read other apps; open apps/links/settings with intents and tell the user what to tap; for full control they can install the full Jarves.apk)"
+            JarvesAccessibilityService.instance != null -> "on"
+            else -> "OFF (ask the user to enable Jarves in Accessibility settings via Jarves > Setup)"
+        }
         val fg = JarvesAccessibilityService.instance?.currentPackage() ?: "unknown"
         val allFiles = if (Build.VERSION.SDK_INT >= 30) Environment.isExternalStorageManager() else true
-        return "[Context — time: $time; foreground app: $fg; screen control: ${if (acc) "on" else "OFF (ask user to enable Jarves in Accessibility settings)"}; all-files access: ${if (allFiles) "on" else "off (downloads go to public Download/Pictures via MediaStore)"}]\n"
+        return "[Context — time: $time; foreground app: $fg; screen control: $screen; all-files access: ${if (allFiles) "on" else "off (downloads go to public Download/Pictures via MediaStore)"}]\n"
     }
 
     private fun remember(fact: String): ToolOutput {
@@ -182,14 +196,12 @@ class ToolRegistry(private val ctx: Context) {
 
         tool("search_contacts", "Search the phone's contacts by name or number.", listOf("query"), "query" to str("Name or number")),
         tool("make_call", "Place a phone call to a number or a contact name.", listOf("to"), "to" to str("Phone number or contact name")),
-        tool("send_sms", "Send an SMS text message to a number or contact name.", listOf("to", "message"),
+        tool("send_sms", "Send an SMS: opens the messaging app with the number and text filled in. With screen control, then call read_screen and tap Send.", listOf("to", "message"),
             "to" to str("Phone number or contact name"), "message" to str("Message text")),
         tool("send_whatsapp", "Open a WhatsApp chat with the message pre-filled. Afterwards call read_screen and tap the Send button to actually send.", listOf("to", "message"),
             "to" to str("Phone number (with country code) or contact name"), "message" to str("Message text")),
         tool("read_notifications", "Read recent notifications (messages, alerts) the phone received.", listOf(),
             "app" to str("Optional app name filter, e.g. WhatsApp"), "limit" to int("How many (default 15)")),
-        tool("read_sms", "Read recent SMS messages from the inbox.", listOf(),
-            "from" to str("Optional sender/contact filter"), "limit" to int("How many (default 10)")),
 
         tool("device_status", "Get battery, charging, storage, network, volume, brightness, phone model and Android version."),
         tool("set_volume", "Set a volume level.", listOf("stream", "level_percent"),

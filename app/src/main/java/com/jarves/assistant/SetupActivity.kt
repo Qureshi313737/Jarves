@@ -91,7 +91,7 @@ class SetupActivity : Activity() {
             orientation = LinearLayout.VERTICAL
             setPadding(dp(16), dp(16), dp(16), dp(32))
         }
-        root.addView(Ui.text(this, "Jarves Setup", 24f).apply { setTypeface(typeface, android.graphics.Typeface.BOLD) })
+        root.addView(Ui.text(this, if (Features.isLite(this)) "Jarves Lite Setup" else "Jarves Setup", 24f).apply { setTypeface(typeface, android.graphics.Typeface.BOLD) })
         root.addView(Ui.text(this, "Neeche ki sab cheezein ek baar set kar dein. Jitni zyada permissions denge, Jarves utna zyada kaam kar payega.", 13f, Ui.MUTED))
 
         // ---- Brain
@@ -179,10 +179,14 @@ class SetupActivity : Activity() {
 
     private fun refreshPermissions() {
         permBox.removeAllViews()
-        val accOn = JarvesAccessibilityService.instance != null || isAccessibilityEnabled()
-        row("Screen control (Accessibility) — apps chalane, tap/type ke liye. SABSE ZAROORI.", accOn) {
-            openIntent(Intent(Settings.ACTION_ACCESSIBILITY_SETTINGS))
-            Toast.makeText(this, "'Installed apps' / 'Downloaded apps' mein Jarves ko ON karein", Toast.LENGTH_LONG).show()
+        if (Features.screenControl(this)) {
+            val accOn = JarvesAccessibilityService.instance != null || isAccessibilityEnabled()
+            row("Screen control (Accessibility) — apps chalane, tap/type ke liye. SABSE ZAROORI.", accOn) {
+                openIntent(Intent(Settings.ACTION_ACCESSIBILITY_SETTINGS))
+                Toast.makeText(this, "'Installed apps' / 'Downloaded apps' mein Jarves ko ON karein", Toast.LENGTH_LONG).show()
+            }
+        } else {
+            permBox.addView(Ui.text(this, "ℹ️ Ye Jarves LITE hai: dusre apps ke andar tap/type nahi kar sakta. Poore control ke liye Jarves.apk (full) install karein.", 13f, 0xFFFFE082.toInt()).apply { setPadding(0, 0, 0, dp(8)) })
         }
         row("Microphone — awaaz se command", granted(Manifest.permission.RECORD_AUDIO)) {
             requestPermissions(arrayOf(Manifest.permission.RECORD_AUDIO), 1)
@@ -198,8 +202,8 @@ class SetupActivity : Activity() {
         row("Display over other apps — floating bubble aur background mein apps kholna", Settings.canDrawOverlays(this)) {
             openIntent(Intent(Settings.ACTION_MANAGE_OVERLAY_PERMISSION, Uri.parse("package:$packageName")))
         }
-        val phonePerms = arrayOf(Manifest.permission.READ_CONTACTS, Manifest.permission.CALL_PHONE, Manifest.permission.SEND_SMS, Manifest.permission.READ_SMS)
-        row("Contacts, Call, SMS — call karna, message bhejna/padhna", phonePerms.all { granted(it) }) {
+        val phonePerms = arrayOf(Manifest.permission.READ_CONTACTS, Manifest.permission.CALL_PHONE)
+        row("Contacts aur Call — naam se call/message karna", phonePerms.all { granted(it) }) {
             requestPermissions(phonePerms, 3)
         }
         val locPerms = arrayOf(Manifest.permission.ACCESS_FINE_LOCATION, Manifest.permission.ACCESS_COARSE_LOCATION)
@@ -209,8 +213,10 @@ class SetupActivity : Activity() {
                 requestPermissions(arrayOf(Manifest.permission.POST_NOTIFICATIONS), 5)
             }
         }
-        row("Notification access — aaye hue messages padhna", JarvesNotificationListener.connected || isListenerEnabled()) {
-            openIntent(Intent("android.settings.ACTION_NOTIFICATION_LISTENER_SETTINGS"))
+        if (Features.notificationReading(this)) {
+            row("Notification access — aaye hue messages padhna", JarvesNotificationListener.connected || isListenerEnabled()) {
+                openIntent(Intent("android.settings.ACTION_NOTIFICATION_LISTENER_SETTINGS"))
+            }
         }
         row("Modify system settings — brightness", Settings.System.canWrite(this)) {
             openIntent(Intent(Settings.ACTION_MANAGE_WRITE_SETTINGS, Uri.parse("package:$packageName")))

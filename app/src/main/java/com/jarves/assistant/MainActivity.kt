@@ -90,7 +90,7 @@ class MainActivity : Activity(), Core.Listener {
         // Header
         val header = LinearLayout(ctx).apply { orientation = LinearLayout.HORIZONTAL; gravity = Gravity.CENTER_VERTICAL }
         val titleBox = LinearLayout(ctx).apply { orientation = LinearLayout.VERTICAL }
-        titleBox.addView(Ui.text(ctx, "Jarves", 24f).apply { setTypeface(typeface, android.graphics.Typeface.BOLD) })
+        titleBox.addView(Ui.text(ctx, if (Features.isLite(ctx)) "Jarves Lite" else "Jarves", 24f).apply { setTypeface(typeface, android.graphics.Typeface.BOLD) })
         status = Ui.text(ctx, "Ready", 13f, Ui.MUTED)
         titleBox.addView(status)
         header.addView(titleBox, LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.WRAP_CONTENT, 1f))
@@ -161,7 +161,7 @@ class MainActivity : Activity(), Core.Listener {
         warning.removeAllViews()
         val problems = ArrayList<String>()
         if (Core.prefs.apiKey.isBlank()) problems.add("• Anthropic API key nahi daali gayi")
-        if (JarvesAccessibilityService.instance == null) problems.add("• Screen control (Accessibility) band hai")
+        if (Features.screenControl(this) && JarvesAccessibilityService.instance == null) problems.add("• Screen control (Accessibility) band hai")
         if (checkSelfPermission(Manifest.permission.RECORD_AUDIO) != PackageManager.PERMISSION_GRANTED) problems.add("• Microphone permission nahi hai")
         if (problems.isEmpty()) {
             warning.visibility = View.GONE

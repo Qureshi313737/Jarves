@@ -20,24 +20,49 @@ jobs:
 
       - uses: gradle/actions/setup-gradle@v4
 
-      - name: Build APK
+      - name: Build APKs (Full + Lite)
         run: |
           chmod +x gradlew
-          ./gradlew assembleRelease --stacktrace --no-daemon
-          cp app/build/outputs/apk/release/app-release.apk Jarves.apk
+          ./gradlew assembleFullRelease assembleLiteRelease --stacktrace --no-daemon
+          cp app/build/outputs/apk/full/release/app-full-release.apk Jarves.apk
+          cp app/build/outputs/apk/lite/release/app-lite-release.apk Jarves-Lite.apk
+
+      - name: Verify signatures (v1 + v2 + v3) and minimum Android version
+        run: |
+          BT=$(ls -d "$ANDROID_HOME"/build-tools/* | sort -V | tail -1)
+          for f in Jarves.apk Jarves-Lite.apk; do
+            echo "== $f"
+            "$BT/apksigner" verify --verbose --print-certs "$f" | grep -E "Verified using|Signer #1 certificate DN|Number of signers"
+            "$BT/aapt2" dump badging "$f" | grep -E "^package:|sdkVersion|targetSdkVersion"
+          done
 
       - uses: actions/upload-artifact@v4
         with:
           name: Jarves-apk
-          path: Jarves.apk
+          path: |
+            Jarves.apk
+            Jarves-Lite.apk
 
-      - name: Publish APK as a release (easy download on the phone)
+      - name: Publish APKs as a release (easy download on the phone)
         uses: softprops/action-gh-release@v2
         with:
           tag_name: jarves-latest
           name: Jarves — latest APK
-          files: Jarves.apk
+          files: |
+            Jarves.apk
+            Jarves-Lite.apk
           body: |
-            Phone par **Jarves.apk** download karke install karein.
-            Install ke baad app kholkar **⚙ Setup** mein API key aur permissions set karein.
+            ## Kaunsa APK download karein?
+            - **Jarves.apk** — FULL: sab features, dusre apps ke andar tap/type (Accessibility) bhi.
+            - **Jarves-Lite.apk** — agar Jarves.apk install na ho (Play Protect block kare). Ye har phone par install hota hai, bas dusre apps ke andar tap/type nahi karta.
+
+            Android 8.0 ya usse naya phone chahiye.
+
+            ## Install steps
+            1. Agar pehle Jarves install hai to pehle use **uninstall** karein (naya permanent signing key hai).
+            2. APK download karke kholein → "Install unknown apps" ki permission dein → Install.
+            3. "Blocked by Play Protect" / "App blocked to protect your device" aaye to: **More details → Install anyway**.
+               Agar ye option na ho: Play Store → profile photo → Play Protect → ⚙ → "Scan apps with Play Protect" OFF → install → phir ON kar dein. Ya Jarves-Lite.apk install karein.
+            4. App kholkar **⚙ Setup** mein API key aur permissions set karein.
+
             Built from commit ${{ github.sha }} (branch ${{ github.ref_name }}).

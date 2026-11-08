@@ -33,17 +33,48 @@ Jarves Hindi, Hinglish, Urdu aur English samajhta hai aur usi bhasha mein jawab 
 
 ## Install kaise karein
 
-1. Phone par is repo ke **Releases** page par jaakar **Jarves.apk** download karein
-   (`jarves-latest` release — har push par GitHub Actions khud naya APK banata hai).
-2. APK kholkar install karein ("Install unknown apps" allow karna padega).
-3. Jarves kholein → **⚙ Setup**:
+**Zaroorat:** Android 8.0 (Oreo) ya usse naya phone. Kisi bhi company ka phone chalega (Samsung, Xiaomi/Redmi/POCO, Vivo, Oppo, Realme, OnePlus, Motorola…).
+
+### Kaunsa APK?
+
+| APK | Kiske liye |
+|---|---|
+| **Jarves.apk** (Full) | Sab features — dusre apps ke andar tap/type/scroll (Accessibility), notifications padhna. |
+| **Jarves-Lite.apk** | Agar Full install na ho (Play Protect block kare). Har phone par install hota hai. Web search, download, apps/links kholna, call, message (Send aap dabayenge), alarm, settings, files — sab karta hai; bas dusre apps ke andar khud tap nahi karta. |
+
+Dono ka package aur signing key same hai, isliye baad mein Lite ke upar Full install karenge to data (API key) bana rahega.
+
+Direct download links:
+- Full: https://github.com/Qureshi313737/Jarves/releases/download/jarves-latest/Jarves.apk
+- Lite: https://github.com/Qureshi313737/Jarves/releases/download/jarves-latest/Jarves-Lite.apk
+
+### Steps
+
+1. **Purana Jarves install hai to pehle uninstall karein** (naye version mein permanent signing key hai; purane build ke upar install nahi hoga).
+2. APK download karein (Chrome mein link kholein). Download complete hone dein — adhoori file "problem parsing the package" deti hai.
+3. File kholein → **"Install unknown apps"** ki permission us app ko dein (Chrome / Files) → wapas aakar **Install**.
+4. Agar **"Blocked by Play Protect"** ya **"App blocked to protect your device"** aaye:
+   - **More details → Install anyway** dabayein.
+   - Ye option na dikhe (India mein Google sensitive permissions wale sideloaded apps block karta hai):
+     Play Store → upar profile photo → **Play Protect** → ⚙ → **Scan apps with Play Protect** OFF karein →
+     APK install karein → phir Play Protect wapas ON kar dein.
+   - Ya seedha **Jarves-Lite.apk** install karein — wo block nahi hota.
+5. Jarves kholein → **⚙ Setup**:
    - **Claude API key** daalein (console.anthropic.com → API keys). Key sirf aapke phone par rehti hai.
-   - **Permissions** ki list mein har "Allow" dabayein. Sabse zaroori: **Accessibility (Screen control)**,
+   - **Permissions** ki list mein har "Allow" dabayein. Sabse zaroori: **Accessibility (Screen control)** (Full),
      **Microphone**, **All files access**, **Display over other apps**.
-   - **Android 13+ note:** sideload kiye gaye apps ke liye Accessibility / Notification access pehle
-     "restricted" dikhte hain. Settings → Apps → Jarves → ⋮ (upar right) → **Allow restricted settings**,
-     phir dobara Accessibility mein Jarves ON karein.
-4. Battery optimization off kar dein taaki Jarves background mein band na ho.
+   - **Android 13+:** Accessibility "restricted setting" dikhaye to: Settings → Apps → Jarves → ⋮ (upar right) →
+     **Allow restricted settings** → phir Accessibility mein Jarves ON karein.
+6. Battery optimization off kar dein taaki Jarves background mein band na ho.
+
+### Agar phir bhi install na ho
+
+| Message | Wajah / Hal |
+|---|---|
+| "App not installed" / "conflicts with an existing package" | Purana Jarves uninstall karein, phir install karein. |
+| "There was a problem parsing the package" | Phone Android 8 se purana hai, ya download adhoora hai — dobara download karein. |
+| "Blocked by Play Protect" | Upar step 4. |
+| Install button grey / kuch nahi hota | "Install unknown apps" permission us app ko dein jisse APK khol rahe hain. |
 
 ## Jarves ko bulane ke tareeke
 
@@ -73,7 +104,8 @@ Jarves Hindi, Hinglish, Urdu aur English samajhta hai aur usi bhasha mein jawab 
 ## Build from source
 
 ```bash
-./gradlew assembleRelease     # APK: app/build/outputs/apk/release/app-release.apk
+./gradlew assembleFullRelease assembleLiteRelease
+# APKs: app/build/outputs/apk/full/release/ aur app/build/outputs/apk/lite/release/
 ```
 
 Android Studio (Ladybug ya naya) mein bhi project khol sakte hain. Kotlin, minSdk 26 (Android 8+),
